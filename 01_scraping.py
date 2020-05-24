@@ -4,36 +4,62 @@ import lxml.html
 from bs4 import BeautifulSoup
 import re
 import csv
+import os
+import csv
 
+
+# DIR
+DIR_HOME = os.getcwd() + os.sep + ".."
+DIR_CSV = DIR_HOME + os.sep + "csv"
 def main(argv):
-    url = "https://race.netkeiba.com/race/result.html?race_id=202008030301&rf=race_list" #コマンドライン引数からURLを取得
-    race_html=requests.get(url)
-    race_html.encoding = race_html.apparent_encoding  
-    race_soup=BeautifulSoup(race_html.text,'html.parser')
+    os.makedirs(DIR_CSV, exist_ok=True) #出力先
+    Race_list = [["日付","着順", "枠", "馬番", "馬名", "性齢", "斤量", "騎手", "タイム", "着差", "人気", "単勝オッズ", "後3F", "コーナー通過順", "厩舎", "馬体重(増減)", "", "馬数"]]
+    year = "2020"
+    loc  = "08" # 08は京都
+    number = range(5) # 開催回数
+    day = range(1,5)    # 何日目
+    race = range(1,13)    # 何レース目か1~12
+    _url = "https://race.netkeiba.com/race/result.html?race_id="
+    url_ = "&rf=race_list"
 
-    # レース表だけを取得して保存
-    HorseList = race_soup.find_all("tr",class_="HorseList")
+    for i in number:
+        for j in day:
+            for k in race:
+                url = _url + str(i).zfill(2) + str(j).zfill(2) + str(k).zfill(2) + url_
+                race_html=requests.get(url)
+                race_html.encoding = race_html.apparent_encoding  
+                race_soup=BeautifulSoup(race_html.text,'html.parser')
 
-    # レース表の整形
-    # レース表を入れるリストを作成
-    Race_lists = []
-    # 表の横列の数=15("着順,枠,馬番,馬名,性齢,斤量,騎手,タイム,着差,人気,単勝オッズ,後3F,コーナー通過順,厩舎,馬体重(増減))
-    Race_row = 15
+                # レース表だけを取得して保存
+                HorseList = race_soup.find_all("tr",class_="HorseList")
 
-    # 出馬数をカウント
-    uma_num = len(HorseList)
+                # レース表の整形
+                # レース表を入れるリストを作成
+                Race_lists = []
+                # 表の横列の数=15("着順,枠,馬番,馬名,性齢,斤量,騎手,タイム,着差,人気,単勝オッズ,後3F,コーナー通過順,厩舎,馬体重(増減))
+                Race_row = 15
 
-    #　無駄な文字列を取り除いてリストへ格納
-    for i in range(uma_num):
-        Race_lists.insert(1+i, HorseList[i])
+                # 出馬数をカウント
+                uma_num = len(HorseList)
+                
+                #　無駄な文字列を取り除いてリストへ格納
+                for i in range(uma_num):
+                    Race_lists.insert(1+i, HorseList[i])
 
-        Race_lists[i] = re.sub(r"\n","",str(Race_lists[i]))
-        Race_lists[i] = re.sub(r" ","",str(Race_lists[i]))
-        Race_lists[i] = re.sub(r"</td>",",",str(Race_lists[i]))
-        Race_lists[i] = re.sub(r"<[^>]*?>","",str(Race_lists[i]))
-        Race_lists[i] = re.sub(r"\[","",str(Race_lists[i]))
-        Race_lists[i] = re.sub(r"\]","",str(Race_lists[i]))
-        print(Race_lists[i])
+                    Race_lists[i] = re.sub(r"\n","",str(Race_lists[i]))
+                    Race_lists[i] = re.sub(r" ","",str(Race_lists[i]))
+                    Race_lists[i] = re.sub(r"</td>",",",str(Race_lists[i]))
+                    Race_lists[i] = re.sub(r"<[^>]*?>","",str(Race_lists[i]))
+                    Race_lists[i] = re.sub(r"\[","",str(Race_lists[i]))
+                    Race_lists[i] = re.sub(r"\]","",str(Race_lists[i]))
+                    Race_lists[i] = Race_lists[i].split(",")
+                    Race_lists[i].append(uma_num)
+                    Race_list.append(Race_lists[i])
+                
+    with open(DIR_CSV + os.sep + "raw_data.csv", "w") as f:
+        writer = csv.writer(f)
+        writer.writerows(Race_list)
+
 def fetch(url :str): 
     r = requests.get(url) #urlのWebページを保存する
     r.encoding = r.apparent_encoding #文字化けを防ぐためにencodingの値をappearent_encodingで判定した値に変更する
